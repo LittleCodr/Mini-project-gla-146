@@ -10,7 +10,10 @@ import {
   Map as MapIcon,
   Sparkles,
   Code2,
-  Trophy
+  Trophy,
+  Clock,
+  ChevronRight,
+  BarChart3
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import api from '../services/api';
@@ -69,9 +72,13 @@ export const LearningPath = () => {
       queryClient.setQueryData(['progress'], (old) => {
         const completedItems = old?.completedItems || [];
         if (!completedItems.find(item => item.step_title === stepTitle)) {
+          const newItems = [...completedItems, { step_title: stepTitle, status: 'completed', id: 'temp_' + Date.now() }];
+          // Calculate new percentage based on 100 steps per domain (approx 500 total)
+          const newPercentage = Math.round((newItems.length / 500) * 1000) / 10;
           return {
             ...old,
-            completedItems: [...completedItems, { step_title: stepTitle, status: 'completed', id: 'temp_' + Date.now() }]
+            completedItems: newItems,
+            percentage: newPercentage
           };
         }
         return old;
@@ -228,21 +235,52 @@ export const LearningPath = () => {
                       {isCurrent && <span className="bg-primary/10 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Active</span>}
                     </div>
                     <p className="text-slate-500 font-bold leading-relaxed mb-6">
-                      {step.description || `Master the architectural patterns and core principles of ${step.title}. This module focuses on practical implementation and industrial best practices.`}
+                      {step.description}
                     </p>
-                    
-                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
-                      <Button 
-                        onClick={() => navigate(`/lesson/${encodeURIComponent(step.title)}`, { state: { steps } })}
-                        className={`rounded-[1.2rem] px-8 py-4 font-black flex items-center gap-2 transition-all ${
-                          isCurrent ? 'btn-primary' : 'bg-white text-slate-500 border border-slate-200 hover:border-primary/20 hover:text-primary shadow-sm'
-                        }`}
-                      >
-                        <PlayCircle className="w-5 h-5" />
-                        Learn Concept
-                      </Button>
 
-                    </div>
+                    <div className="flex flex-wrap gap-4 mb-6">
+                        <span className={
+                          step.difficulty === 'Beginner' ? 'badge-beginner' : 
+                          step.difficulty === 'Intermediate' ? 'badge-intermediate' : 
+                          'badge-advanced'
+                        }>
+                          <BarChart3 className="w-3 h-3 inline mr-1" />
+                          {step.difficulty || 'Intermediate'}
+                        </span>
+                        <span className="flex items-center gap-1 text-slate-400 text-[10px] font-black uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+                          <Clock className="w-3 h-3" />
+                          {step.estimatedHours || 10} Hours
+                        </span>
+                      </div>
+
+                      {step.milestones && (
+                        <div className="mb-8 bg-slate-50/50 rounded-2xl p-6 border border-slate-100/50">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <ChevronRight className="w-3 h-3 text-primary" />
+                            Key Milestones
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                            {step.milestones.map((milestone, idx) => (
+                              <div key={idx} className="flex items-center gap-2 text-slate-600 text-sm font-bold">
+                                <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                                {milestone}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
+                        <Button 
+                          onClick={() => navigate(`/lesson/${encodeURIComponent(step.title)}`, { state: { steps } })}
+                          className={`rounded-[1.2rem] px-8 py-4 font-black flex items-center gap-2 transition-all ${
+                            isCurrent ? 'btn-primary' : 'bg-white text-slate-500 border border-slate-200 hover:border-primary/20 hover:text-primary shadow-sm'
+                          }`}
+                        >
+                          <PlayCircle className="w-5 h-5" />
+                          Master Concept
+                        </Button>
+                      </div>
                   </div>
 
                   {/* Star Button (Favorite Toggle) */}

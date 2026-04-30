@@ -39,24 +39,53 @@ export const getFallbackLesson = (title) => {
   
   if (key) return mockLessons[key];
 
-  // Generic Dynamic Content Generation
+  // Deep & God-Level Content Generation for 100+ roadmaps
   return {
     title: title,
-    introduction: `This specialized module deep-dives into the core mechanics of ${title}. It is designed to bridge the gap between theoretical knowledge and industrial application.`,
+    introduction: `Welcome to the high-intensity module on **${title}**. This is not just a tutorial; it's a deep-dive into the architectural nuances, performance bottlenecks, and industrial-grade patterns that define modern technical excellence. By the end of this module, you will have moved beyond basic syntax into the realm of professional mastery.`,
     sections: [
       {
-        heading: "1. Foundational Architecture",
-        content: `Mastering ${title} requires an understanding of its underlying architectural patterns. We explore how this concept integrates with modern development ecosystems.`
+        heading: "1. Theoretical Underpinnings",
+        content: `Understanding **${title}** starts with grasping the 'First Principles'. We analyze the core logic that makes this technology indispensable. Whether it's resource management, state propagation, or cryptographic integrity, this section strips away the abstraction to reveal the fundamental mechanics.`,
       },
       {
-        heading: "2. Performance & Optimization",
-        content: `When implementing ${title} at scale, performance is critical. We focus on minimizing execution overhead and optimizing resource allocation.`
+        heading: "2. Architectural Pattern Analysis",
+        content: `Modern systems are built on patterns, not just code. For **${title}**, we focus on modularity and scalability. How does this fit into a microservices architecture? How do we handle race conditions? We explore the design decisions that lead to robust, fail-safe implementations.`,
+        language: "Architecture Logic",
+        code: `// High-level conceptual implementation of ${title}
+class ${title.replace(/\s+/g, '')}Service {
+  constructor(config) {
+    this.config = config;
+    this.state = 'INITIALIZED';
+  }
+
+  async executeSequence(payload) {
+    try {
+      console.log('Initiating ${title} logic chain...');
+      // Implement advanced validation and processing here
+      const result = await this.process(payload);
+      this.state = 'COMPLETED';
+      return result;
+    } catch (error) {
+      this.state = 'FAILED';
+      throw new Error(\`Sequence interrupted: \${error.message}\`);
+    }
+  }
+}`
       },
       {
-        heading: "3. Real-world Implementation",
-        content: "Practical examples and best practices for deploying this logic in production environments."
+        heading: "3. Hyper-Performance Optimization",
+        content: `In production, every millisecond counts. We look at **${title}** through the lens of performance. This involves minimizing memory footprints, optimizing garbage collection cycles, and ensuring that our execution logic doesn't block the main event loop or exceed gas limits.`,
+      },
+      {
+        heading: "4. Security & Edge-Case Resilience",
+        content: `A master knows that 'it works' is not enough. We must ensure it 'cannot break'. We dive into security audits for **${title}**, handling unexpected inputs, preventing injection attacks, and implementing robust fallback mechanisms that maintain system integrity during partial failures.`,
+      },
+      {
+        heading: "5. Industrial Deployment Strategies",
+        content: `Finally, we look at the 'DevOps' of **${title}**. Containerization, CI/CD pipelines, and real-time monitoring. We discuss how to observe this logic in the wild using telemetry and how to perform blue-green deployments without user-facing downtime.`,
       }
     ],
-    tip: `Focus on the 'Why' behind ${title} to truly master its 'How'.`
+    tip: `The difference between a senior and a lead developer is the ability to anticipate how **${title}** will behave under 100x load. Always build for scale.`
   };
 };
