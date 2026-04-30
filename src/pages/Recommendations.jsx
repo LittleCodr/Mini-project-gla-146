@@ -37,15 +37,8 @@ export const Recommendations = () => {
     const targetInterest = selectedInterest || interest;
     if (!targetInterest) return;
 
-    setIsLoading(true);
-    try {
-      await api.learning.generatePath(targetInterest);
-      navigate('/learning-path', { state: { interest: targetInterest } });
-    } catch (err) {
-      console.error('Generation failed:', err);
-    } finally {
-      setIsLoading(false);
-    }
+    // Navigate immediately to show the beautiful architecting screen on the next page
+    navigate('/learning-path', { state: { interest: targetInterest } });
   };
 
   return (

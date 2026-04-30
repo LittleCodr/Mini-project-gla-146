@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { auth } from '../firebase';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 const apiClient = axios.create({
   baseURL: API_URL,
+  timeout: 60000, // 60 seconds
   headers: {
     'Content-Type': 'application/json',
   },
@@ -86,6 +87,12 @@ export const api = {
 
     upvote: (resource_id) =>
       apiClient.post('/upvote', { resource_id }),
+
+    getComments: (resource_id) =>
+      apiClient.get(`/resource/${resource_id}/comments`),
+
+    addComment: (resource_id, content) =>
+      apiClient.post(`/resource/${resource_id}/comments`, { content }),
   },
 };
 

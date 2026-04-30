@@ -21,44 +21,55 @@ ML_DIR = os.path.join(BASE_DIR, "ml")
 VECTORIZER_PATH = os.path.join(ML_DIR, "vectorizer.pkl")
 MODEL_PATH = os.path.join(ML_DIR, "model.pkl")
 
-# ─── Load model artifacts ONCE at startup ────────────────────────────────────
+# ─── Lazy Loading Mechanism ─────────────────────────────────────────────────
 _vectorizer = None
 _model_data: Dict[str, Any] = {}
+_is_loading = False
 
-def _load_model():
-    global _vectorizer, _model_data
+def _get_model():
+    global _vectorizer, _model_data, _is_loading
+    
+    if _vectorizer is not None:
+        return _vectorizer, _model_data
+    
+    if _is_loading:
+        # Simple spin lock or wait logic could go here, 
+        # but for now we'll just let the first caller load it
+        pass
+
     try:
+        _is_loading = True
+        logger.info("[*] Initializing ML Model (Lazy Load)...")
+        
         # Check if model files exist
         if not os.path.exists(VECTORIZER_PATH) or not os.path.exists(MODEL_PATH):
             logger.info("[*] Model artifacts missing. Triggering automatic training...")
             try:
                 from app.ml.train_model import train
                 train()
-            except ImportError:
-                logger.error("[✗] Could not import training script. Please ensure app/ml/train_model.py exists.")
-                return
             except Exception as train_error:
                 logger.error(f"[✗] Automatic training failed: {train_error}")
-                return
+                return None, {}
 
         with open(VECTORIZER_PATH, "rb") as f:
             _vectorizer = pickle.load(f)
         with open(MODEL_PATH, "rb") as f:
             _model_data = pickle.load(f)
         
-        logger.info(f"[✓] ML model loaded successfully from {ML_DIR}")
+        logger.info(f"[✓] ML model ready.")
+        return _vectorizer, _model_data
     except Exception as e:
         logger.error(f"[✗] Failed to load ML model: {e}")
-        _vectorizer = None
-        _model_data = {}
-
-_load_model()  # Load immediately on import
+        return None, {}
+    finally:
+        _is_loading = False
 
 
 # ─── Service Functions ────────────────────────────────────────────────────────
 
 def _is_model_ready() -> bool:
-    return _vectorizer is not None and "df" in _model_data
+    vec, data = _get_model()
+    return vec is not None and "df" in data
 
 
 def recommend_topics(interest: str, top_n: int = 5) -> List[Dict]:
@@ -66,16 +77,16 @@ def recommend_topics(interest: str, top_n: int = 5) -> List[Dict]:
     Given a user interest string, find the top_n most similar topics
     from the dataset using TF-IDF cosine similarity.
     """
-    if not _is_model_ready():
-        logger.warning("Model not ready; returning empty recommendations.")
+    vec, data = _get_model()
+    if vec is None:
         return []
 
-    df: pd.DataFrame = _model_data["df"]
-    unique_interests: List[str] = _model_data["unique_interests"]
-    tfidf_matrix = _model_data["tfidf_matrix"]
+    df: pd.DataFrame = data["df"]
+    unique_interests: List[str] = data["unique_interests"]
+    tfidf_matrix = data["tfidf_matrix"]
 
     # Vectorize user query
-    query_vec = _vectorizer.transform([interest.lower()])
+    query_vec = vec.transform([interest.lower()])
     similarities = cosine_similarity(query_vec, tfidf_matrix).flatten()
 
     # Get top matching interest labels
@@ -110,22 +121,28 @@ def generate_learning_path(interest: str = "Web Development") -> List[Dict]:
     Generate a sequential learning roadmap derived from the ML model.
     Uses the best-matching domain and returns its ordered steps.
     """
-    if not _is_model_ready():
-        logger.warning("Model not ready; returning empty path.")
+    vec, data = _get_model()
+    if vec is None:
         return []
 
-    df: pd.DataFrame = _model_data["df"]
-    unique_interests: List[str] = _model_data["unique_interests"]
-    tfidf_matrix = _model_data["tfidf_matrix"]
+    df: pd.DataFrame = data["df"]
+    unique_interests: List[str] = data["unique_interests"]
+    tfidf_matrix = data["tfidf_matrix"]
 
     # Vectorize query
-    query_vec = _vectorizer.transform([interest.lower()])
+    query_vec = vec.transform([interest.lower()])
     similarities = cosine_similarity(query_vec, tfidf_matrix).flatten()
     best_idx = int(similarities.argmax())
     best_interest = unique_interests[best_idx]
 
     # Get all steps for the matching domain
-    matched_domain_id = df[df["interest"] == best_interest]["domain_id"].iloc[0]
+    matches = df[df["interest"] == best_interest]
+    if matches.empty:
+        # Fallback to the first domain if somehow no match is found
+        matched_domain_id = df["domain_id"].iloc[0]
+    else:
+        matched_domain_id = matches["domain_id"].iloc[0]
+        
     path_df = (
         df[df["domain_id"] == matched_domain_id]
         .drop_duplicates(subset=["learning_step_order"])

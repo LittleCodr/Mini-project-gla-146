@@ -88,13 +88,23 @@ export const TryEditor = () => {
     if (language === 'python' && !pyodide) {
       const initPyodide = async () => {
         setIsLoading(true);
+        setOutput("Initializing Python Virtual Environment...");
         try {
+          if (!window.loadPyodide) {
+             throw new Error("Pyodide script not loaded. Check your internet connection.");
+          }
           // @ts-ignore
           const py = await window.loadPyodide();
           setPyodide(py);
+          setOutput("> Python 3.11 engine ready.\n> Type code and press Run.");
         } catch (err) {
           console.error("Pyodide failed:", err);
-          setOutput("Failed to load Python environment.");
+          const isStorageError = err.message?.includes('storage') || err.message?.includes('IndexedDB') || !window.indexedDB;
+          setOutput(
+            isStorageError 
+            ? "❌ BROWSER SECURITY ALERT: Your browser is blocking storage access (IndexedDB). Please disable 'Tracking Prevention' or allow third-party storage for this site to run Python locally."
+            : `❌ FAILED TO INITIALIZE ENGINE: ${err.message}`
+          );
         }
         setIsLoading(false);
       };

@@ -135,5 +135,21 @@ class UpvoteRequest(BaseModel):
     resource_id: str
 
 
+class AddCommentRequest(BaseModel):
+    content: str
+
+
+class CommentOut(BaseModel):
+    id: str
+    resource_id: str
+    content: str
+    creator_name: str
+    creator_id: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # Update forward references
 TokenResponse.model_rebuild()

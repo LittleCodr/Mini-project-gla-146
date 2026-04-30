@@ -51,3 +51,39 @@ def upvote_resource(db, resource_id: str) -> dict:
     data = updated_doc.to_dict()
     data['id'] = updated_doc.id
     return data
+
+
+def get_comments(db, resource_id: str) -> list:
+    """Return all comments for a specific resource."""
+    docs = db.collection('resources').document(resource_id).collection('comments').order_by('created_at', direction='ASCENDING').stream()
+    comments = []
+    for doc in docs:
+        data = doc.to_dict()
+        data['id'] = doc.id
+        comments.append(data)
+    return comments
+
+
+def add_comment(db, user: dict, resource_id: str, content: str) -> dict:
+    """Add a new comment to a resource."""
+    resource_ref = db.collection('resources').document(resource_id)
+    if not resource_ref.get().exists:
+        raise HTTPException(status_code=404, detail="Resource not found")
+
+    comment = {
+        "resource_id": resource_id,
+        "content": content,
+        "creator_id": user['id'],
+        "creator_name": user.get('name', 'Community Member'),
+        "created_at": datetime.utcnow()
+    }
+    
+    # Add to subcollection
+    _, ref = resource_ref.collection('comments').add(comment)
+    comment['id'] = ref.id
+    
+    # Increment comments_count on resource
+    from google.cloud.firestore import Increment
+    resource_ref.update({"comments_count": Increment(1)})
+    
+    return comment

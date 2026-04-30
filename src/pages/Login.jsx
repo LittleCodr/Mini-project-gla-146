@@ -24,8 +24,29 @@ export const Login = () => {
       await signInWithEmailAndPassword(auth, email, password);
       navigate(from, { replace: true });
     } catch (err) {
-      const msg = err.message || 'Failed to login';
-      setError(msg.replace('Firebase: ', ''));
+      console.error("Auth Error:", err.code);
+      let msg = "Authentication Failed.";
+      
+      switch (err.code) {
+        case 'auth/user-not-found':
+          msg = "No account found with this email. Please signup first.";
+          break;
+        case 'auth/wrong-password':
+          msg = "Incorrect access key (password). Please try again.";
+          break;
+        case 'auth/invalid-email':
+          msg = "The identity (email) format is invalid.";
+          break;
+        case 'auth/operation-not-allowed':
+          msg = "Email/Password sign-in is not enabled in Firebase Console.";
+          break;
+        case 'auth/network-request-failed':
+          msg = "Network error. Check your connection or Firebase authorized domains.";
+          break;
+        default:
+          msg = err.message.replace('Firebase: ', '');
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }

@@ -26,9 +26,12 @@ def get_current_user(
     """FastAPI dependency to get the currently authenticated user from Firebase JWT."""
     token = credentials_header.credentials
 
+    import time
+    start_auth = time.time()
     try:
         # Verify the Firebase ID token
         decoded_token = firebase_auth.verify_id_token(token)
+        logger.info(f"[Perf] Token verification took: {time.time() - start_auth:.4f}s")
     except Exception as e:
         logger.warning(f"Invalid or expired Firebase token: {e}")
         raise HTTPException(
@@ -48,8 +51,10 @@ def get_current_user(
         )
 
     # Use Firestore
+    db_fetch_start = time.time()
     user_ref = db.collection('users').document(uid)
     user_doc = user_ref.get()
+    logger.info(f"[Perf] Auth User Doc Fetch took: {time.time() - db_fetch_start:.4f}s")
 
     if user_doc.exists:
         user_data = user_doc.to_dict()
@@ -57,6 +62,7 @@ def get_current_user(
         return user_data
     else:
         # Auto-create user in Firestore
+        create_start = time.time()
         new_user = {
             "name": name,
             "email": email,
@@ -64,5 +70,6 @@ def get_current_user(
         }
         user_ref.set(new_user)
         new_user['id'] = uid
+        logger.info(f"[Perf] Auth User Auto-create took: {time.time() - create_start:.4f}s")
         logger.info(f"Auto-created new user from Firebase token: {email}")
         return new_user

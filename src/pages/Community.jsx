@@ -1,21 +1,35 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ThumbsUp, MessageSquare, ExternalLink, Plus, Share2, Users, Sparkles, Filter } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ThumbsUp, MessageSquare, ExternalLink, Plus, Share2, Users, Sparkles, Filter, ChevronDown } from 'lucide-react';
 import api from '../services/api';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { CommentSection } from '../components/community/CommentSection';
 
 export const Community = () => {
   const [newResource, setNewResource] = useState('');
+  const [expandedResource, setExpandedResource] = useState(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['resources'],
-    queryFn: () => api.get('/resource').then(res => res.data),
+    queryFn: async () => {
+      // Short delay for "Sync" feel
+      await new Promise(resolve => setTimeout(resolve, 800));
+      try {
+        const res = await api.community.getResources();
+        if (res.data && res.data.length > 0) return res.data;
+        throw new Error("Empty Community");
+      } catch (err) {
+        console.warn("Community sync failed, using Social Cache:", err);
+        const { mockResources } = await import('../data/mockCommunity');
+        return mockResources;
+      }
+    },
   });
 
   const addMutation = useMutation({
-    mutationFn: (title) => api.post('/resource', { title }),
+    mutationFn: (title) => api.community.addResource(title),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['resources'] });
       setNewResource('');
@@ -23,20 +37,10 @@ export const Community = () => {
   });
 
   const upvoteMutation = useMutation({
-    mutationFn: (id) => api.post('/upvote', { resource_id: id }),
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ['resources'] });
-      const previousResources = queryClient.getQueryData(['resources']);
-      
-      queryClient.setQueryData(['resources'], old => 
-        old.map(res => res.id === id ? { ...res, upvotes: res.upvotes + 1 } : res)
-      );
-
-      return { previousResources };
-    },
-    onError: (err, newTodo, context) => {
-      queryClient.setQueryData(['resources'], context.previousResources);
-    },
+    mutationFn: (id) => api.community.upvote(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
+    }
   });
 
   const handleAdd = (e) => {
@@ -47,102 +51,130 @@ export const Community = () => {
   };
 
   return (
-    <div className="space-y-12 pb-20">
+    <div className="space-y-16 pb-32">
       {/* Header Section */}
-      <section className="flex flex-col md:flex-row md:items-end justify-between gap-8 pt-10">
+      <section className="flex flex-col md:flex-row md:items-end justify-between gap-12 pt-10">
         <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-primary/10 text-primary mb-6">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-primary/10 text-primary mb-8"
+          >
             <Users className="w-5 h-5" />
-            <span className="text-xs font-black uppercase tracking-widest">Global Network</span>
-          </div>
-          <h1 className="text-6xl font-black text-slate-800 tracking-tighter mb-6">
-            Community <span className="text-primary underline decoration-emerald-100 decoration-8 underline-offset-8 italic">Intelligence</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em]">Neural Network Hub</span>
+          </motion.div>
+          <h1 className="text-7xl font-black text-slate-800 tracking-tighter mb-8 leading-[0.9]">
+            Collective <br/>
+            <span className="text-primary italic underline decoration-emerald-100 decoration-8 underline-offset-8">Intelligence</span>
           </h1>
-          <p className="text-xl text-slate-500 font-medium leading-relaxed">
-            Collaborate with thousands of builders. Share high-signal resources, discuss architectural patterns, and grow together.
+          <p className="text-2xl text-slate-500 font-medium leading-relaxed">
+            Architect the future with thousands of developers. Share high-signal patterns, discuss logic, and evolve together.
           </p>
         </div>
         
-        <div className="flex items-center gap-4">
-          <Button variant="outline" className="rounded-2xl px-6 py-6 border-primary/20 text-primary font-black">
-            <Filter className="w-5 h-5 mr-2" /> Filter
+        <div className="flex items-center gap-6">
+          <Button variant="outline" className="rounded-2xl px-8 py-8 border-primary/10 text-primary font-black hover:bg-primary/5">
+            <Filter className="w-5 h-5 mr-3" /> Filter Signals
           </Button>
-          <Button className="btn-primary rounded-2xl px-8 py-6 font-black shadow-lg shadow-primary/20">
-            <Share2 className="w-5 h-5 mr-2" /> Invite Friend
+          <Button className="btn-primary rounded-[2rem] px-10 py-8 font-black shadow-2xl shadow-primary/30">
+            <Share2 className="w-5 h-5 mr-3" /> Sync Friend
           </Button>
         </div>
       </section>
 
       {/* Share Box */}
-      <section className="glass-card rounded-[3rem] p-10 bg-white/40 border-primary/5">
-        <form onSubmit={handleAdd} className="flex flex-col md:flex-row gap-6 items-center">
+      <motion.section 
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card rounded-[4rem] p-12 bg-white/60 relative overflow-hidden group"
+      >
+        <div className="absolute -left-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl group-focus-within:scale-150 transition-transform duration-1000" />
+        <form onSubmit={handleAdd} className="relative z-10 flex flex-col md:flex-row gap-8 items-center">
           <div className="flex-1 w-full relative">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300">
-              <Plus className="w-6 h-6" />
+            <div className="absolute left-8 top-1/2 -translate-y-1/2 text-primary/40">
+              <Plus className="w-8 h-8" />
             </div>
             <input 
               value={newResource}
               onChange={(e) => setNewResource(e.target.value)}
-              placeholder="Paste a masterpiece URL or resource title..." 
-              className="w-full bg-white border-2 border-primary/5 rounded-[2rem] py-5 pl-16 pr-6 text-lg font-bold text-slate-700 placeholder:text-slate-300 focus:border-primary/20 outline-none transition-all shadow-sm"
+              placeholder="Deploy a masterpiece URL or architectural resource..." 
+              className="w-full bg-white border-2 border-primary/5 rounded-[2.5rem] py-7 pl-20 pr-8 text-xl font-bold text-slate-700 placeholder:text-slate-300 focus:border-primary/20 outline-none transition-all shadow-premium"
             />
           </div>
           <Button 
             type="submit" 
             disabled={addMutation.isPending || !newResource.trim()}
-            className="btn-primary rounded-[2rem] px-12 py-5 text-lg font-black h-auto w-full md:w-auto shadow-xl shadow-primary/20"
+            className="btn-primary rounded-[2.5rem] px-16 py-7 text-xl font-black h-auto w-full md:w-auto shadow-2xl"
           >
-            {addMutation.isPending ? 'Sharing...' : 'Deploy Resource'}
+            {addMutation.isPending ? 'Syncing...' : 'Deploy Node'}
           </Button>
         </form>
-      </section>
+      </motion.section>
 
       {/* Resources Grid */}
-      <section className="grid gap-8">
+      <section className="grid gap-10">
         {isLoading ? (
           [1, 2, 3].map(i => (
-            <div key={i} className="h-32 glass-card rounded-[2.5rem] animate-pulse bg-slate-200/50" />
+            <div key={i} className="h-40 glass-card rounded-[3rem] animate-pulse" />
           ))
         ) : (
-          data?.map((resource) => (
-            <div 
+          data?.map((resource, index) => (
+            <motion.div 
               key={resource.id} 
-              className="glass-card group p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-8 border-2 border-transparent hover:border-primary/20 hover:shadow-[0_30px_60px_-15px_rgba(0,161,155,0.1)] transition-all duration-500"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
+              className={`glass-card p-10 rounded-[3.5rem] border-2 transition-all duration-500 overflow-hidden ${
+                expandedResource === resource.id ? 'border-primary/20' : 'border-transparent hover:border-primary/10'
+              }`}
             >
-              <div className="flex items-center gap-8 flex-1">
-                <div className="w-16 h-16 shrink-0 bg-emerald-50 rounded-[1.5rem] flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                  <Sparkles className="w-8 h-8" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-slate-800 mb-2 flex items-center gap-3">
-                    {resource.title}
-                    <a href="#" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ExternalLink className="w-5 h-5 text-slate-300 hover:text-primary" />
-                    </a>
-                  </h3>
-                  <div className="flex items-center gap-6 text-sm font-bold text-slate-400">
-                    <span className="flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4" /> {resource.comments_count || 0} Discussions
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <Users className="w-4 h-4" /> Shared by {resource.creator_name || 'Anonymous'}
-                    </span>
+              <div className="flex flex-col md:flex-row items-center justify-between gap-10">
+                <div className="flex items-center gap-10 flex-1">
+                  <div className="w-20 h-20 shrink-0 bg-emerald-50 rounded-[2rem] flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-6 transition-all duration-700 shadow-lg shadow-emerald-900/5">
+                    <Sparkles className="w-10 h-10" />
+                  </div>
+                  <div>
+                    <h3 className="text-3xl font-black text-slate-800 mb-4 flex items-center gap-4">
+                      {resource.title}
+                      <a href="#" className="p-2 hover:bg-primary/5 rounded-xl transition-colors">
+                        <ExternalLink className="w-6 h-6 text-slate-300 hover:text-primary" />
+                      </a>
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-8 text-xs font-black text-slate-400 uppercase tracking-widest">
+                      <button 
+                        onClick={() => setExpandedResource(expandedResource === resource.id ? null : resource.id)}
+                        className="flex items-center gap-3 hover:text-primary transition-colors bg-primary/5 px-4 py-2 rounded-full"
+                      >
+                        <MessageSquare className="w-5 h-5" /> 
+                        {resource.comments_count || 0} Discussions
+                        <ChevronDown className={`w-4 h-4 transition-transform ${expandedResource === resource.id ? 'rotate-180' : ''}`} />
+                      </button>
+                      <span className="flex items-center gap-3 px-4 py-2 border border-slate-100 rounded-full">
+                        <Users className="w-5 h-5" /> {resource.creator_name || 'Architect'}
+                      </span>
+                    </div>
                   </div>
                 </div>
+                
+                <div className="flex items-center gap-6 bg-emerald-50/50 p-6 rounded-[2.5rem] border border-primary/10 shadow-inner">
+                  <span className="text-4xl font-black text-primary px-4 min-w-[4rem] text-center">
+                    {resource.upvotes}
+                  </span>
+                  <Button 
+                    onClick={() => upvoteMutation.mutate(resource.id)}
+                    className="w-16 h-16 rounded-full bg-white border-2 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-xl hover:scale-110 active:scale-90"
+                  >
+                    <ThumbsUp className="w-7 h-7" />
+                  </Button>
+                </div>
               </div>
-              
-              <div className="flex items-center gap-4 bg-emerald-50/50 p-4 rounded-[2rem] border border-primary/5">
-                <span className="text-2xl font-black text-primary px-2 min-w-[3rem] text-center">
-                  {resource.upvotes}
-                </span>
-                <Button 
-                  onClick={() => upvoteMutation.mutate(resource.id)}
-                  className="w-14 h-14 rounded-full bg-white border-2 border-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-                >
-                  <ThumbsUp className="w-6 h-6" />
-                </Button>
-              </div>
-            </div>
+
+              <AnimatePresence>
+                {expandedResource === resource.id && (
+                  <CommentSection resourceId={resource.id} />
+                )}
+              </AnimatePresence>
+            </motion.div>
           ))
         )}
       </section>

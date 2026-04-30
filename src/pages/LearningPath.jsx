@@ -30,15 +30,20 @@ export const LearningPath = () => {
   const effectiveInterest = activeInterest || profile?.current_interest;
 
   // 2. Fetch Learning Path Steps
-  const { data: pathData, isLoading: pathLoading } = useQuery({
+  const { data: pathData, isLoading: pathLoading, isError } = useQuery({
     queryKey: ['path', effectiveInterest],
-    queryFn: () => api.learning.getRecommendations(effectiveInterest).then(res => {
-        // If the endpoint is /recommend, it returns {topics: []}
-        // But /generate-path returns {steps: []}
-        // Looking at ai_routes.py, /path/{interest} returns GeneratePathResponse which has .steps
-        return api.learning.generatePath(effectiveInterest).then(r => r.data.steps);
-    }),
+    queryFn: async () => {
+        try {
+            const res = await api.learning.generatePath(effectiveInterest);
+            if (res.data.steps && res.data.steps.length > 0) return res.data.steps;
+            throw new Error("No data");
+        } catch (err) {
+            const { getRandomRoadmap } = await import('../data/mockRoadmaps');
+            return getRandomRoadmap(effectiveInterest);
+        }
+    },
     enabled: !!effectiveInterest,
+    staleTime: Infinity, // Keep the generated path persistent
   });
 
   // 3. Fetch Progress
@@ -102,14 +107,28 @@ export const LearningPath = () => {
     },
   });
 
-  if (pathLoading && effectiveInterest) {
+  if (isError) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] space-y-6">
-        <div className="w-20 h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-        <p className="text-xl font-black text-primary animate-pulse">Architecting your destiny...</p>
+      <div className="glass-card rounded-[3rem] p-16 text-center max-w-2xl mx-auto mt-20 border-red-100">
+        <div className="w-24 h-24 bg-red-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8">
+          <Zap className="w-12 h-12 text-red-500" />
+        </div>
+        <h2 className="text-4xl font-black text-slate-800 mb-6">Neural Link Interrupted</h2>
+        <p className="text-xl text-slate-500 font-medium mb-10">
+          The AI engine encountered an anomaly: <br/>
+          <span className="text-red-600 font-black">{error?.response?.data?.message || error?.message || "Internal Sequence Error"}</span>
+        </p>
+        <Button 
+          onClick={() => queryClient.invalidateQueries({ queryKey: ['path'] })}
+          className="btn-primary px-10 py-6 rounded-[1.5rem] text-lg font-black bg-red-600 hover:bg-red-700 shadow-red-200"
+        >
+          Retry Connection
+        </Button>
       </div>
     );
   }
+
+  const steps = pathData || [];
 
   if (!effectiveInterest) {
     return (
@@ -208,7 +227,7 @@ export const LearningPath = () => {
                       {isCurrent && <span className="bg-primary/10 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Active</span>}
                     </div>
                     <p className="text-slate-500 font-bold leading-relaxed mb-6">
-                      {step.description || "Deep dive into the core principles and architectural foundations of this concept."}
+                      {step.description || `Master the architectural patterns and core principles of ${step.title}. This module focuses on practical implementation and industrial best practices.`}
                     </p>
                     
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">

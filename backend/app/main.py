@@ -41,20 +41,23 @@ app = FastAPI(
 )
 
 # ─── CORS Middleware ──────────────────────────────────────────────────────────
+# Using a more robust configuration to prevent preflight failures
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173", 
-        "http://localhost:5174", 
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:3000"
-    ],
+    allow_origins=["*"], # More permissive for local development stability
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.error(f"GLOBAL CRASH: {exc}", exc_info=True)
+    return {
+        "detail": "Internal Server Error",
+        "message": str(exc)
+    }, 500
 
 # ─── Routers ──────────────────────────────────────────────────────────────────
 app.include_router(auth_routes.router)

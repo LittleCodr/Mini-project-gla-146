@@ -36,23 +36,37 @@ def generate_path(
     db = Depends(get_db),
 ):
     """Generates a personalized, sequential learning roadmap from the ML model."""
+    import time
+    start_time = time.time()
     try:
         interest = body.interest.strip() if body.interest else "Web Development"
+        logger.info(f"[Perf] Starting generation for: {interest}")
+        
+        path_start = time.time()
         steps = recommendation_service.generate_learning_path(interest)
+        logger.info(f"[Perf] AI Path Generation took: {time.time() - path_start:.4f}s")
         
-        # Save active roadmap interest to user profile
-        user_id = current_user['id']
-        db.collection('users').document(user_id).update({
-            "current_interest": interest
-        })
+        if not steps:
+             logger.warning(f"No steps generated for interest: {interest}")
         
+        # Save active roadmap interest to user profile - wrap in safety
+        db_start = time.time()
+        try:
+            user_id = current_user.get('id')
+            if user_id:
+                db.collection('users').document(user_id).update({
+                    "current_interest": interest
+                })
+                logger.info(f"[Perf] Firestore update took: {time.time() - db_start:.4f}s")
+        except Exception as db_err:
+            logger.error(f"Non-critical Firestore update failed: {db_err}")
+        
+        logger.info(f"[Perf] Total request time: {time.time() - start_time:.4f}s")
         return schemas.GeneratePathResponse(steps=steps)
 
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Error in /generate-path: {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate learning path.")
+        logger.error(f"Critical error in /generate-path: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to generate learning path: {str(e)}")
 
 
 @router.get("/path/{interest}", response_model=schemas.GeneratePathResponse)

@@ -25,8 +25,26 @@ export const Signup = () => {
       setSuccess(true);
       setTimeout(() => navigate('/dashboard'), 2000);
     } catch (err) {
-      const msg = err.message || 'Failed to create account';
-      setError(msg.replace('Firebase: ', ''));
+      console.error("Signup Error:", err.code);
+      let msg = "Failed to create account.";
+      
+      switch (err.code) {
+        case 'auth/email-already-in-use':
+          msg = "This identity (email) is already linked to an account.";
+          break;
+        case 'auth/weak-password':
+          msg = "The access key (password) is too weak. Use at least 6 characters.";
+          break;
+        case 'auth/invalid-email':
+          msg = "The identity (email) format is invalid.";
+          break;
+        case 'auth/operation-not-allowed':
+          msg = "Signup is not enabled in Firebase Console.";
+          break;
+        default:
+          msg = err.message.replace('Firebase: ', '');
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }

@@ -54,3 +54,34 @@ def upvote(
     except Exception as e:
         logger.error(f"Error upvoting resource {body.resource_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to upvote resource.")
+
+
+@router.get("/resource/{resource_id}/comments", response_model=List[schemas.CommentOut])
+def get_comments(
+    resource_id: str,
+    db = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    try:
+        return community_service.get_comments(db, resource_id)
+    except Exception as e:
+        logger.error(f"Error fetching comments for {resource_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch comments.")
+
+
+@router.post("/resource/{resource_id}/comments", response_model=schemas.CommentOut, status_code=201)
+def add_comment(
+    resource_id: str,
+    body: schemas.AddCommentRequest,
+    db = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    try:
+        if not body.content or not body.content.strip():
+            raise HTTPException(status_code=422, detail="Comment cannot be empty.")
+        return community_service.add_comment(db, current_user, resource_id, body.content.strip())
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding comment to {resource_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add comment.")
