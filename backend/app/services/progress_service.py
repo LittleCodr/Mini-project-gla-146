@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 def update_progress(db, user: dict, step_title: str) -> dict:
     """Mark a learning step as completed. Idempotent."""
     user_id = user['id']
+    step_title = step_title.strip()
     # Create a safe document ID: user_id + slugified title
     safe_title = "".join(c if c.isalnum() else "_" for c in step_title)
     progress_id = f"{user_id}_{safe_title}"
@@ -64,7 +65,7 @@ def get_progress(db, user: dict) -> schemas.ProgressResponse:
         completedItems=[
             schemas.ProgressItem(
                 id=p['id'],
-                step_title=p['step_title'],
+                step_title=p['step_title'].strip(),
                 status=p['status'],
                 completed_at=p['completed_at']
             )

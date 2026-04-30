@@ -87,6 +87,8 @@ export const LearningPath = () => {
     },
     onError: (err, stepTitle, context) => {
       queryClient.setQueryData(['progress'], context.previousProgress);
+      console.error("Progress update failed:", err);
+      alert(`Sync Error: ${err.message}. Please check your connection.`);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['progress'] });
@@ -100,9 +102,9 @@ export const LearningPath = () => {
       const previousFavorites = queryClient.getQueryData(['favorites']);
       queryClient.setQueryData(['favorites'], (old) => {
         const favorites = old || [];
-        const isFavorited = favorites.find(item => item.step_title === stepTitle);
+        const isFavorited = favorites.find(item => item.step_title?.trim() === stepTitle?.trim());
         if (isFavorited) {
-          return favorites.filter(item => item.step_title !== stepTitle);
+          return favorites.filter(item => item.step_title?.trim() !== stepTitle?.trim());
         } else {
           return [...favorites, { step_title: stepTitle, id: 'temp_' + Date.now() }];
         }
@@ -157,9 +159,12 @@ export const LearningPath = () => {
   }
 
   const steps = pathData || [];
-  const completedTitles = new Set(progressData?.completedItems?.map(item => item.step_title) || []);
-  const favoriteTitles = new Set(favoritesData?.map(item => item.step_title) || []);
-  const completionPercentage = progressData?.percentage || 0;
+  const completedTitles = new Set(progressData?.completedItems?.map(item => item.step_title?.trim()) || []);
+  const favoriteTitles = new Set(favoritesData?.map(item => item.step_title?.trim()) || []);
+  
+  // Calculate percentage relative to CURRENT roadmap steps for better user feedback
+  const currentCompletedCount = steps.filter(s => completedTitles.has(s.title?.trim())).length;
+  const completionPercentage = steps.length > 0 ? Math.round((currentCompletedCount / steps.length) * 1000) / 10 : 0;
 
   return (
     <div className="space-y-12 pb-20">

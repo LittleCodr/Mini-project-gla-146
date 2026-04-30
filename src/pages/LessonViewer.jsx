@@ -90,13 +90,15 @@ export const LessonViewer = () => {
     },
     onError: (err, stepTitle, context) => {
       queryClient.setQueryData(['progress'], context.previousProgress);
+      console.error("Progress update failed:", err);
+      alert(`Sync Error: ${err.message}. Please check your connection.`);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['progress'] });
     },
   });
 
-  const isCompleted = progress?.completedItems?.some(item => item.step_title === title);
+  const isCompleted = progress?.completedItems?.some(item => item.step_title?.trim() === title?.trim());
 
   const goToNext = () => {
     if (actualCurrentIndex < finalSteps.length - 1) {
