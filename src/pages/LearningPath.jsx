@@ -222,8 +222,8 @@ export const LearningPath = () => {
                       isCompleted ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'bg-slate-50 text-slate-300 hover:bg-emerald-50 hover:text-primary'
                     }`}
                   >
-                    <span className="group-hover/check:opacity-0 transition-opacity">{index + 1}</span>
-                    <CheckCircle2 className="absolute opacity-0 group-hover/check:opacity-100 w-8 h-8 transition-opacity" />
+                    <span className={`transition-opacity ${isCompleted ? 'opacity-0' : 'group-hover/check:opacity-0'}`}>{index + 1}</span>
+                    <CheckCircle2 className={`absolute transition-opacity w-8 h-8 ${isCompleted ? 'opacity-100' : 'opacity-0 group-hover/check:opacity-100'}`} />
                   </button>
 
                   <div className="flex-1 text-center md:text-left">

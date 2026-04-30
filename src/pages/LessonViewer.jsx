@@ -70,7 +70,28 @@ export const LessonViewer = () => {
 
   const completeMutation = useMutation({
     mutationFn: (stepTitle) => api.progress.update(stepTitle),
-    onSuccess: () => {
+    onMutate: async (stepTitle) => {
+      await queryClient.cancelQueries({ queryKey: ['progress'] });
+      const previousProgress = queryClient.getQueryData(['progress']);
+      queryClient.setQueryData(['progress'], (old) => {
+        const completedItems = old?.completedItems || [];
+        if (!completedItems.find(item => item.step_title === stepTitle)) {
+          const newItems = [...completedItems, { step_title: stepTitle, status: 'completed', id: 'temp_' + Date.now() }];
+          const newPercentage = Math.round((newItems.length / 500) * 1000) / 10;
+          return {
+            ...old,
+            completedItems: newItems,
+            percentage: newPercentage
+          };
+        }
+        return old;
+      });
+      return { previousProgress };
+    },
+    onError: (err, stepTitle, context) => {
+      queryClient.setQueryData(['progress'], context.previousProgress);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['progress'] });
     },
   });
