@@ -131,8 +131,6 @@ export const LearningPath = () => {
     );
   }
 
-  const steps = pathData || [];
-
   if (!effectiveInterest) {
     return (
       <div className="glass-card rounded-[3rem] p-16 text-center max-w-2xl mx-auto mt-20">
