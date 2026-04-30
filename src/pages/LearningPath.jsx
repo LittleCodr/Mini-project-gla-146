@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import api from '../services/api';
+import { syncProgress, getRobustProgress } from '../services/progressSync';
 
 export const LearningPath = () => {
   const location = useLocation();
@@ -55,7 +56,7 @@ export const LearningPath = () => {
   // 3. Fetch Progress
   const { data: progressData } = useQuery({
     queryKey: ['progress'],
-    queryFn: () => api.progress.get().then(res => res.data),
+    queryFn: () => getRobustProgress(),
   });
 
   // 4. Fetch Favorites
@@ -65,7 +66,7 @@ export const LearningPath = () => {
   });
 
   const completeMutation = useMutation({
-    mutationFn: (stepTitle) => api.progress.update(stepTitle),
+    mutationFn: (stepTitle) => syncProgress(stepTitle),
     onMutate: async (stepTitle) => {
       await queryClient.cancelQueries({ queryKey: ['progress'] });
       const previousProgress = queryClient.getQueryData(['progress']);
@@ -87,8 +88,7 @@ export const LearningPath = () => {
     },
     onError: (err, stepTitle, context) => {
       queryClient.setQueryData(['progress'], context.previousProgress);
-      console.error("Progress update failed:", err);
-      alert(`Sync Error: ${err.message}. Please check your connection.`);
+      console.error("Critical Sync Failure:", err);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['progress'] });
