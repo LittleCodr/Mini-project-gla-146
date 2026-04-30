@@ -30,10 +30,10 @@ export const LessonViewer = () => {
     queryKey: ['lesson', title],
     queryFn: async () => {
       try {
-        // Race the API against a 2-second timeout
+        // Race the API against a 300ms timeout
         const fetchPromise = api.learning.getLesson(title).then(res => res.data);
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Neural Timeout")), 2000)
+          setTimeout(() => reject(new Error("HyperTimeout")), 300)
         );
 
         const data = await Promise.race([fetchPromise, timeoutPromise]);

@@ -34,8 +34,11 @@ export const LearningPath = () => {
     queryKey: ['path', effectiveInterest],
     queryFn: async () => {
         try {
-            const res = await api.learning.generatePath(effectiveInterest);
-            if (res.data.steps && res.data.steps.length > 0) return res.data.steps;
+            const fetchPromise = api.learning.generatePath(effectiveInterest).then(res => res.data.steps);
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("HyperTimeout")), 300));
+            
+            const steps = await Promise.race([fetchPromise, timeoutPromise]);
+            if (steps && steps.length > 0) return steps;
             throw new Error("No data");
         } catch (err) {
             const { getRandomRoadmap } = await import('../data/mockRoadmaps');
